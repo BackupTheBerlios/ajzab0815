@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+	<general>
+		<title value="AJStats"/>
+		<version value="0.9.2"/>
+		<author value="Zab0815"/>
+		<contact value="zab0815@zab0815.homelinux.org"/>
+		<description value="AJStats zeigt den Verlauf der Up- und Downloadraten. Benötigt wird ein GUI ab 0.56.1"/>
+		<istab value="true"/>
+		<classname value="de.applejuicenet.client.gui.plugins.AJStatsPlugin"/>
+	</general>
+</root>
