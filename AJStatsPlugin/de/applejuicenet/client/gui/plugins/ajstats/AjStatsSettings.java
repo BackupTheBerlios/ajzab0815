@@ -8,7 +8,6 @@ package de.applejuicenet.client.gui.plugins.ajstats;
 
 import java.awt.Color;
 import java.awt.Image;
-
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JColorChooser;
@@ -288,13 +287,15 @@ public class AjStatsSettings extends JPanel {
 				JSUpdateTime.setName("JSUpdateTime");  // Generated
 				JSUpdateTime.setPaintLabels(true);  // Generated
 				JSUpdateTime.setPaintTicks(true);  // Generated
-				JSUpdateTime.setValue(1000);  // Generated
+				JSUpdateTime.setValue(Integer.parseInt(parent.getProperties().getProperty("UpdateTime","2000")));  // Generated
+				getLblValue().setText(Integer.toString((JSUpdateTime.getValue())));
 				JSUpdateTime.addChangeListener(new javax.swing.event.ChangeListener() { 
 
 					public void stateChanged(javax.swing.event.ChangeEvent e) {    
 						getLblValue().setText(Integer.toString((JSUpdateTime.getValue())));
 						parent.getProperties().put("UpdateTime", Integer.toString(JSUpdateTime.getValue()));
 						parent.saveProperties();
+						firePropertyChange("UpdateTime", 0, JSUpdateTime.getValue());
 					}
 				});
 
@@ -348,8 +349,8 @@ public class AjStatsSettings extends JPanel {
 				try {
 					jCheckBox.setSelected(Boolean.getBoolean(parent.getProperties().getProperty("UseGradient","false")));
 				} catch (NullPointerException e) {
-					jCheckBox.setSelected(true);
-					parent.getProperties().put("UseGradient", Boolean.toString(true));
+					jCheckBox.setSelected(false);
+					parent.getProperties().put("UseGradient", Boolean.toString(false));
 				}
 				
 				jCheckBox.addChangeListener(new javax.swing.event.ChangeListener() { 
@@ -359,7 +360,7 @@ public class AjStatsSettings extends JPanel {
 						getBtnBGColorEnd().setEnabled(state);
 						getLblBGColorEnd().setEnabled(state);
 						getCmbBGDirection().setEnabled(state);
-						parent.getProperties().put("UseGradient", new Boolean(state).toString());
+						parent.getProperties().put("UseGradient", Boolean.toString(state));
 					}
 				});
 

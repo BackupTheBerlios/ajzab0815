@@ -12,6 +12,8 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.image.BufferedImage;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
@@ -37,7 +39,7 @@ import de.applejuicenet.client.gui.plugins.AJStatsPlugin;
  * To change the template for this generated type comment go to
  * Window - Preferences - Java - Code Generation - Code and Comments
  */
-public class UpDownChart extends JPanel implements MouseListener, MouseMotionListener {
+public class UpDownChart extends JPanel implements MouseListener, MouseMotionListener, PropertyChangeListener {
 	/*** <code>BG_NO_GRADIENT</code> draws simple background with <code>BGStart</code> as color */
 	public final static int BG_NO_GRADIENT = -1;
 	/*** <code>BG_LEFT_TO_RIGHT</code> draws the gradient from left with <code>BGStart</code> to right with <code>BGEnd</code> */
@@ -61,6 +63,9 @@ public class UpDownChart extends JPanel implements MouseListener, MouseMotionLis
 
     private static Logger logger;
     private static Timer timerThread;
+    private TimerTask chartTimer=null;
+    
+    private long initTime=0;
     
     private static int gradientDirection = BG_DOWN_TO_UP;
 	private static Color BGEnd = new Color(20, 200, 20);
@@ -78,13 +83,14 @@ public class UpDownChart extends JPanel implements MouseListener, MouseMotionLis
 	private int legendWidth = 200;
 	private int legendHeight = 20;
 	private int legendAlpha=128;
-	private int mouseX;
-	private int mouseY;
+	private int mouseX=0;
+	private int mouseY=0;
 
 	private int topY = 0;
 	private int bottomY = 0;
 	private int bottomHeight = 30;
 	private int maxSpeed = 10;
+	private int aktX =0;
 	private int oldHeight=0;
 	private int oldWidth=0;
 	
@@ -118,35 +124,27 @@ public class UpDownChart extends JPanel implements MouseListener, MouseMotionLis
 		this.parent = parent;
 	}
 	
-	public class timerClass extends TimerTask {
-
-		/* (non-Javadoc)
-		 * @see java.util.TimerTask#run()
-		 */
-		public void run() {
-			if (getWidth()==0 || getHeight()==0){
-				/*
-				 Da kamen schneller Daten rein, als das Plugin angezeigt werden konnte.
-				 Wir nehmen folglich erst den naechsten Durchgang.
-				 */
-				return;
-			}
-			
-			repaint();
-		}
-		
-	}
+	private class chartTimerTask extends TimerTask {
 	
+		public void run() {
+			aktX++;
+			repaint();
+			System.out.println("Timer:" + (System.currentTimeMillis() - initTime));
+		}
+		public TimerTask getTimerClass() {
+				return chartTimer;
+		}
+	}
 	
 	public UpDownChart() {
 		logger = Logger.getLogger(getClass());
 		addMouseListener(this);
+		initTime = System.currentTimeMillis();
 		try {
-			timerThread = new Timer();
-			timerThread.schedule(new timerClass(), 1000, 2000);
 			try {
-				timerThread.wait();
-			} catch (InterruptedException e1) {
+				timerThread = new Timer();
+				chartTimer = new chartTimerTask();
+			} catch (Exception e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
@@ -224,20 +222,22 @@ public class UpDownChart extends JPanel implements MouseListener, MouseMotionLis
 		//add data to the array
 		try {
 			ud.add((Long)info.get(uploadSpeedKey), (Long)info.get(downloadSpeedKey) , System.currentTimeMillis());
+			if (ud.size() == 1)
+				timerThread.schedule(chartTimer, 1000, updatePeriod);
+			
 		} catch (NullPointerException e) {
 			//No Data, or no Time then exit
 			return;
 		}
 
-		if (getWidth()==0 || getHeight()==0){
-			/*
-			 Da kamen schneller Daten rein, als das Plugin angezeigt werden konnte.
-			 Wir nehmen folglich erst den naechsten Durchgang.
-			 */
-			return;
-		}
+//		if (getWidth()==0 || getHeight()==0){
+//			/*
+//			 Da kamen schneller Daten rein, als das Plugin angezeigt werden konnte.
+//			 Wir nehmen folglich erst den naechsten Durchgang.
+//			 */
+//			return;
+//		}
 
-		
 		if (Boolean.valueOf(parent.getProperties().getProperty("changed")).booleanValue() == true) {
 			
 			upCol = parent.getPropertyColor("UploadColor",Color.red);
@@ -246,18 +246,26 @@ public class UpDownChart extends JPanel implements MouseListener, MouseMotionLis
 			BGStart = parent.getPropertyColor("GradientStart", Color.white);
 			BGEnd = parent.getPropertyColor("GradientEnd", Color.darkGray);
 			
-			if (Boolean.valueOf(parent.getProperties().getProperty("UseGradient")).booleanValue() == true)
+			if (Boolean.valueOf(parent.getProperties().getProperty("UseGradient")).booleanValue() == false)
 				gradientDirection = BG_NO_GRADIENT;
 			else
 				gradientDirection = Integer.parseInt(parent.getProperties().getProperty("GradientDirection"));
 			
 			updatePeriod = Integer.parseInt(parent.getProperties().getProperty("UpdateTime","2000"));
-			timerThread.notify();
+			try {
+				timerThread.schedule(chartTimer, 500, updatePeriod);
+			} catch (IllegalStateException e) {
+				System.err.println("Not owner - no wait();");
+			} catch (IllegalMonitorStateException e1) {
+				System.err.println("Not owner - no wait();");
+			} finally {
+				//timerThread.schedule(chartTimer, 500, updatePeriod);
+			}
 			
 			parent.getProperties().put("changed","false");
+			parent.saveProperties();
 			forceResize = true;
 		}
-		initializeImages();
 		
 		
 		//drawGraph();
@@ -266,23 +274,18 @@ public class UpDownChart extends JPanel implements MouseListener, MouseMotionLis
 		
 
 	public void paintComponent(Graphics g) {
+//		initializeImages();
 	    if (image != null) {
-	        if (getHeight()!=oldHeight || forceResize == true){
-	            if (getHeight()>=minChartHeight){
-	            	oldHeight = getHeight();
-					bottomY = getHeight() - bottomHeight;
-					forceResize =false;
-
-					image = null;
-					//System.out.println("discard image");
-					backImage = null;
-					//System.out.println("discard backImage");
-					initializeImages();					
-	            }
-	        }
-	        
-	        if (getWidth()!=oldWidth || forceResize == true){
-	        	oldWidth = getWidth();
+	    	boolean UpdateFlag = false;
+	    	
+	    	if (getHeight()!=oldHeight || forceResize == true || getWidth()!=oldWidth) {
+	    		UpdateFlag = true;
+	    	}
+	    	
+	        if (UpdateFlag == true){
+	        	oldHeight = getHeight();
+	        	bottomY = getHeight() - bottomHeight;
+	            oldWidth = getWidth();
 	            maxWidth = getWidth();
 	            forceResize =false;
 	            
@@ -292,7 +295,6 @@ public class UpDownChart extends JPanel implements MouseListener, MouseMotionLis
 	            //System.out.println("discard backImage");
 	            initializeImages();					
 	        }
-	        
 	        try {
 	        	Graphics2D g2 = (Graphics2D)image.getGraphics();
 
@@ -325,6 +327,7 @@ public class UpDownChart extends JPanel implements MouseListener, MouseMotionLis
 	        }
 	    }
 	    else{
+	    	initializeImages();
 	        super.paintComponent(g);
 	    }
 	}
@@ -341,35 +344,44 @@ public class UpDownChart extends JPanel implements MouseListener, MouseMotionLis
 		double lAverageUp = 0.0;
 		double lAverageDown = 0.0;
 		
+		maxSpeed = 0;
+		
+		do {
+			maxSpeed += 10;
+		} while (ud.getMaxUp() > maxSpeed*1024);
+		
+		do {
+			maxSpeed += 10;
+		} while (ud.getMaxDown() > maxSpeed*1024); 
+
 		//draw upload rate-graph
 		for (int i = 0;i < ud.size();i++) {
 			int up = (int)(ud.get(i).getUp() * bottomY / maxSpeed / 1024.0);
 			int down = (int)(ud.get(i).getDown() * bottomY / maxSpeed / 1024.0);
+			int xPos = i;
 
 			lAverageUp += ud.get(i).getUp();
 			lAverageDown += ud.get(i).getDown();
 			
 			//System.out.print("upspeed = " + upSpeed.doubleValue() + " up = " + up + "\r\n"); 
-			if ((ud.get(i).getUp() > maxSpeed*1024) || (ud.get(i).getDown() > maxSpeed*1024)) {
-				maxSpeed += 10;
-				//forceResize =true;
-				repaint();
-				return;
-			}
+//			if ((ud.get(i).getUp() > maxSpeed*1024) || (ud.get(i).getDown() > maxSpeed*1024)) {
+//				maxSpeed += 10;
+//				//forceResize =true;
+//				repaint();
+//				return;
+//			}
 			g.setColor(upCol);
-			g.drawLine(31+i, bottomY - lastUp , i+32, bottomY - up );
+			g.drawLine(31+xPos, bottomY - lastUp , xPos+32, bottomY - up );
 			g.setColor(downCol);
-			g.drawLine(31+i, bottomY - lastDown, i+32, bottomY - down);
+			g.drawLine(31+xPos, bottomY - lastDown, xPos+32, bottomY - down);
 
-//			if (ud.get(i).getTime() > lastTimeLabel + 5*60*1000){
 			if (i % 50 == 0){
 					lastTimeLabel = ud.get(i).getTime();
-				drawTime(i+31, ud.get(i).getTime());
+				drawTime(xPos+31, ud.get(i).getTime());
 			}
 			
 			lastUp = up;
 			lastDown = down;
-			Thread.yield();
 		}
 		
 		Stroke s =new BasicStroke(1, BasicStroke.CAP_ROUND, 
@@ -388,18 +400,10 @@ public class UpDownChart extends JPanel implements MouseListener, MouseMotionLis
 		drawMark(g, 768000 / 8, nf, Color.GRAY, s );
 		
 		double Average =lAverageUp/ud.size();
-		//lAverageUp = bottomY - ((lAverageUp/ud.size()) * bottomY / maxSpeed / 1024.0);
 		drawMark(g, Average, nf, upCol.brighter(), s );
-		//g.setColor(upCol.brighter());
-		//g.drawString(nf.format(Average), image.getWidth(null)-30, (int)lAverageUp - 10);
-		//g.drawLine(31, (int)lAverageUp, image.getWidth(null), (int)lAverageUp);
 
 		Average = lAverageDown/ud.size();
-		//lAverageDown = bottomY - ((lAverageDown/ud.size()) * bottomY / maxSpeed / 1024.0);
 		drawMark(g, Average, nf, downCol.brighter(), s );
-		//g.setColor(downCol.brighter());
-		//g.drawString(nf.format(Average), image.getWidth(null)-30, (int)lAverageDown - 10);
-		//g.drawLine(31, (int)lAverageDown, image.getWidth(null), (int)lAverageDown);
 		
 		
 		g.dispose();
@@ -823,6 +827,12 @@ public class UpDownChart extends JPanel implements MouseListener, MouseMotionLis
 	 */
 	public void setGradientDirection(int gradientDirection) {
 		UpDownChart.gradientDirection = gradientDirection;
+	}
+	/* (non-Javadoc)
+	 * @see java.beans.PropertyChangeListener#propertyChange(java.beans.PropertyChangeEvent)
+	 */
+	public void propertyChange(PropertyChangeEvent evt) {
+		System.out.println(evt.getPropertyName() +":" + evt.getOldValue() + "->" + evt.getNewValue()); 	
 	}
 
 

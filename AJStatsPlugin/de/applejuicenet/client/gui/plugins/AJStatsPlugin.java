@@ -36,7 +36,7 @@ import de.applejuicenet.client.gui.plugins.ajstats.GraphPanel;
 import de.charts.updownchart.UpDownChart;
 
 /**
- * $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/ajzab0815/Repository/AJStatsPlugin/de/applejuicenet/client/gui/plugins/AJStatsPlugin.java,v 1.1 2004/05/21 18:52:21 zab0815 Exp $
+ * $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/ajzab0815/Repository/AJStatsPlugin/de/applejuicenet/client/gui/plugins/AJStatsPlugin.java,v 1.2 2004/05/28 21:47:41 zab0815 Exp $
  *
  * <p>Titel: AppleJuice Core-GUI</p>
  * <p>Beschreibung: Erstes GUI für den von muhviehstarr entwickelten appleJuice-Core</p>
@@ -45,6 +45,11 @@ import de.charts.updownchart.UpDownChart;
  * @author: zab0815 <aj@tkl-soft.de>
  *
  * $Log: AJStatsPlugin.java,v $
+ * Revision 1.2  2004/05/28 21:47:41  zab0815
+ * Next try...
+ * need to delete data when graph is full and make things multithreaded.
+ * Also the timer has to define the scroll-speed.
+ *
  * Revision 1.1  2004/05/21 18:52:21  zab0815
  * First commit since upgrading to new Plugin interface. Only few changes with settings are needed.
  *
@@ -76,6 +81,7 @@ public class AJStatsPlugin
         savePath = savePath.substring(0, index) + File.separator +
             "ajstatsplugin.properties";
         properties = new Properties();
+        
         File tmpFile = new File(savePath);
         if (tmpFile.isFile()){
             try {
@@ -92,6 +98,9 @@ public class AJStatsPlugin
         
         ud = new UpDownChart();
         ud.setParent(this);
+        addPropertyChangeListener(ud);
+        addMouseListener(ud);
+        addMouseMotionListener(ud);
         String propGradient = properties.getProperty("UseGradient");
         if (propGradient != null){
         	Integer propGradientDir = null;
@@ -166,9 +175,8 @@ public class AJStatsPlugin
         this.pluginsPropertiesXMLHolder = pluginsPropertiesXMLHolder;
 
 //        addFocusListener(this);
-        init();
-
     	try{
+    		init();
             
             //registriere Plugin für Upload-Änderungen
             ApplejuiceFassade.getInstance().addDataUpdateListener(this,
