@@ -36,7 +36,7 @@ import de.applejuicenet.client.gui.plugins.ajstats.GraphPanel;
 import de.charts.updownchart.UpDownChart;
 
 /**
- * $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/ajzab0815/Repository/AJStatsPlugin/de/applejuicenet/client/gui/plugins/AJStatsPlugin.java,v 1.2 2004/05/28 21:47:41 zab0815 Exp $
+ * $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/ajzab0815/Repository/AJStatsPlugin/de/applejuicenet/client/gui/plugins/AJStatsPlugin.java,v 1.3 2004/06/17 10:14:03 zab0815 Exp $
  *
  * <p>Titel: AppleJuice Core-GUI</p>
  * <p>Beschreibung: Erstes GUI für den von muhviehstarr entwickelten appleJuice-Core</p>
@@ -45,6 +45,9 @@ import de.charts.updownchart.UpDownChart;
  * @author: zab0815 <aj@tkl-soft.de>
  *
  * $Log: AJStatsPlugin.java,v $
+ * Revision 1.3  2004/06/17 10:14:03  zab0815
+ * Fix BUG with timertask, read settings for max up/download speed, read initial settings
+ *
  * Revision 1.2  2004/05/28 21:47:41  zab0815
  * Next try...
  * need to delete data when graph is full and make things multithreaded.

@@ -26,6 +26,7 @@ import javax.swing.JPanel;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
+import de.applejuicenet.client.gui.controller.ApplejuiceFassade;
 import de.applejuicenet.client.gui.plugins.AJStatsPlugin;
 
 
@@ -99,8 +100,6 @@ public class UpDownChart extends JPanel implements MouseListener, MouseMotionLis
 	private BufferedImage legendImage = null;
 	
 	private boolean dragging = false;	
-	private boolean forceResize =false;
-	
 	private String uploadSpeedKey = "uploadspeed";
 	private String downloadSpeedKey = "downloadspeed";
 	private long updatePeriod;
@@ -122,6 +121,7 @@ public class UpDownChart extends JPanel implements MouseListener, MouseMotionLis
 	 */
 	public void setParent(AJStatsPlugin parent) {
 		this.parent = parent;
+		readProperies();
 	}
 	
 	private class chartTimerTask extends TimerTask {
@@ -129,7 +129,7 @@ public class UpDownChart extends JPanel implements MouseListener, MouseMotionLis
 		public void run() {
 			aktX++;
 			repaint();
-			System.out.println("Timer:" + (System.currentTimeMillis() - initTime));
+			//System.out.println("Timer:" + (System.currentTimeMillis() - initTime));
 		}
 		public TimerTask getTimerClass() {
 				return chartTimer;
@@ -221,7 +221,12 @@ public class UpDownChart extends JPanel implements MouseListener, MouseMotionLis
 		
 		//add data to the array
 		try {
-			ud.add((Long)info.get(uploadSpeedKey), (Long)info.get(downloadSpeedKey) , System.currentTimeMillis());
+			//Prüfen, ob mehr Daten gespeichert wurden, als angezeigt werden können.
+			if (ud.size() > maxWidth)
+				//erstes element aus dem Array löschen.
+				ud.remove(0);
+			
+			ud.add((Long)info.get(uploadSpeedKey), (Long)info.get(downloadSpeedKey), System.currentTimeMillis());
 			if (ud.size() == 1)
 				timerThread.schedule(chartTimer, 1000, updatePeriod);
 			
@@ -238,36 +243,6 @@ public class UpDownChart extends JPanel implements MouseListener, MouseMotionLis
 //			return;
 //		}
 
-		if (Boolean.valueOf(parent.getProperties().getProperty("changed")).booleanValue() == true) {
-			
-			upCol = parent.getPropertyColor("UploadColor",Color.red);
-			downCol = parent.getPropertyColor("DownloadColor", Color.blue);
-
-			BGStart = parent.getPropertyColor("GradientStart", Color.white);
-			BGEnd = parent.getPropertyColor("GradientEnd", Color.darkGray);
-			
-			if (Boolean.valueOf(parent.getProperties().getProperty("UseGradient")).booleanValue() == false)
-				gradientDirection = BG_NO_GRADIENT;
-			else
-				gradientDirection = Integer.parseInt(parent.getProperties().getProperty("GradientDirection"));
-			
-			updatePeriod = Integer.parseInt(parent.getProperties().getProperty("UpdateTime","2000"));
-			try {
-				timerThread.schedule(chartTimer, 500, updatePeriod);
-			} catch (IllegalStateException e) {
-				System.err.println("Not owner - no wait();");
-			} catch (IllegalMonitorStateException e1) {
-				System.err.println("Not owner - no wait();");
-			} finally {
-				//timerThread.schedule(chartTimer, 500, updatePeriod);
-			}
-			
-			parent.getProperties().put("changed","false");
-			parent.saveProperties();
-			forceResize = true;
-		}
-		
-		
 		//drawGraph();
 		//repaint();
 	}
@@ -278,16 +253,21 @@ public class UpDownChart extends JPanel implements MouseListener, MouseMotionLis
 	    if (image != null) {
 	    	boolean UpdateFlag = false;
 	    	
-	    	if (getHeight()!=oldHeight || forceResize == true || getWidth()!=oldWidth) {
+	    	if (getHeight()!=oldHeight || getWidth()!=oldWidth) {
 	    		UpdateFlag = true;
 	    	}
 	    	
-	        if (UpdateFlag == true){
+			if (Boolean.valueOf(parent.getProperties().getProperty("changed")).booleanValue() == true) {
+				readProperies();				
+
+				UpdateFlag = true;
+			}
+
+			if (UpdateFlag == true){
 	        	oldHeight = getHeight();
 	        	bottomY = getHeight() - bottomHeight;
 	            oldWidth = getWidth();
 	            maxWidth = getWidth();
-	            forceResize =false;
 	            
 	            image = null;
 	            //System.out.println("discard image");
@@ -295,6 +275,7 @@ public class UpDownChart extends JPanel implements MouseListener, MouseMotionLis
 	            //System.out.println("discard backImage");
 	            initializeImages();					
 	        }
+			
 	        try {
 	        	Graphics2D g2 = (Graphics2D)image.getGraphics();
 
@@ -396,8 +377,11 @@ public class UpDownChart extends JPanel implements MouseListener, MouseMotionLis
 
 		s =new BasicStroke(1, BasicStroke.CAP_ROUND, 
 				BasicStroke.JOIN_ROUND, 0, new float[]{6,6,0,0,6,6,0,0}, 0);
-		drawMark(g, 128000 / 8, nf, Color.GRAY, s );
-		drawMark(g, 768000 / 8, nf, Color.GRAY, s );
+				
+		
+		//draw line for maximum Up/Download regarding the settings
+		drawMark(g, ApplejuiceFassade.getInstance().getCurrentAJSettings().getMaxUploadInKB() * 1024, nf, Color.GRAY, s );
+		drawMark(g, ApplejuiceFassade.getInstance().getCurrentAJSettings().getMaxDownloadInKB() * 1024, nf, Color.GRAY, s );
 		
 		double Average =lAverageUp/ud.size();
 		drawMark(g, Average, nf, upCol.brighter(), s );
@@ -436,42 +420,42 @@ public class UpDownChart extends JPanel implements MouseListener, MouseMotionLis
 	 */
 	private void drawLabel() {
 		
-		try {
-			Graphics2D g = (Graphics2D)image.getGraphics();
-			FontMetrics fm = g.getFontMetrics();
-			
-			//setup format of outtext
-			NumberFormat nf = NumberFormat.getInstance();
-			nf.setMinimumIntegerDigits(3);
-			
-			//first clear old text - fill with gradient
-			//g.setPaint(getGradient(gradientDirection,image.getHeight(null),30));
-			//g.fillRect(0, 0, 30, image.getHeight(null));
-			
-			//setup font
-			g.setColor(Color.WHITE);
-			int strWidth = fm.stringWidth ( "XXX -" );
-			int strHeight = fm.getAscent();
-			g.setFont(new Font(g.getFont().getName(), Font.PLAIN, g.getFont().getSize()));
-			g.drawString("kb/s", 30-g.getFontMetrics().stringWidth("kb/s "), image.getHeight(null)-strHeight);
-			
-			
-			//draw text for speed
-			for (int i=0;i<(maxSpeed/10)+1;i++){
-				//calculate y-position
-				int yPos = (int)(bottomY-((bottomY - topY - strHeight*1.0)/( maxSpeed/10)) * i);
-				
-				//set color and draw text for speed
-				g.drawString(nf.format(i*10), 30-strWidth, yPos+strHeight/2);
-			}
-			g.setColor(lineCol);
-			g.drawLine(30,topY,30,bottomY);
-			g.dispose();
-		}
-		catch (Exception e) {
-			if (logger.isEnabledFor(Level.ERROR))
-				logger.error("Error drawing labels :" + e.getMessage() + "\r\n" + e.getCause());
-		}
+//		try {
+//			Graphics2D g = (Graphics2D)image.getGraphics();
+//			FontMetrics fm = g.getFontMetrics();
+//			
+//			//setup format of outtext
+//			NumberFormat nf = NumberFormat.getInstance();
+//			nf.setMinimumIntegerDigits(3);
+//			
+//			//first clear old text - fill with gradient
+//			//g.setPaint(getGradient(gradientDirection,image.getHeight(null),30));
+//			//g.fillRect(0, 0, 30, image.getHeight(null));
+//			
+//			//setup font
+//			g.setColor(Color.WHITE);
+//			int strWidth = fm.stringWidth ( "XXX -" );
+//			int strHeight = fm.getAscent();
+//			g.setFont(new Font(g.getFont().getName(), Font.PLAIN, g.getFont().getSize()));
+//			g.drawString("kb/s", 30-g.getFontMetrics().stringWidth("kb/s "), image.getHeight(null)-strHeight);
+//			
+//			
+//			//draw text for speed
+//			for (int i=0;i<(maxSpeed/10)+1;i++){
+//				//calculate y-position
+//				int yPos = (int)(bottomY-((bottomY - topY - strHeight*1.0)/( maxSpeed/10)) * i);
+//				
+//				//set color and draw text for speed
+//				g.drawString(nf.format(i*10), 30-strWidth, yPos+strHeight/2);
+//			}
+//			g.setColor(lineCol);
+//			g.drawLine(30,topY,30,bottomY);
+//			g.dispose();
+//		}
+//		catch (Exception e) {
+//			if (logger.isEnabledFor(Level.ERROR))
+//				logger.error("Error drawing labels :" + e.getMessage() + "\r\n" + e.getCause());
+//		}
 	}
 
 	/**
@@ -539,14 +523,53 @@ public class UpDownChart extends JPanel implements MouseListener, MouseMotionLis
 	 */
 	private void drawLines() {
 		try {
+			int divider = 5;
+			//setup Scaling for horizontal speedmarks (10 / 5 kBit/s)
+			//everything above 50 kBit is 10kBit/s or 5kBit/s if below 50kBit.
+			if ((ud.getMaxDown()/1024 > 50) || (ud.getMaxUp()/1024 > 50)) {
+				divider = 10;
+			}
+			int yStep = maxSpeed / divider;
+			
 			Graphics2D g = (Graphics2D)image.getGraphics();
-			g.setColor(lineCol);
-			for (int i=0;i<(maxSpeed/10)+1;i++){
+
+			FontMetrics fm = g.getFontMetrics();
+			
+			//setup format of outtext
+			NumberFormat nf = NumberFormat.getInstance();
+			nf.setMinimumIntegerDigits(3);
+
+			//setup font
+			int strWidth = fm.stringWidth ( "XXX -" );
+			int strHeight = fm.getAscent();
+			g.setFont(new Font(g.getFont().getName(), Font.PLAIN, g.getFont().getSize()));
+			g.drawString("kb/s", 30-g.getFontMetrics().stringWidth("kb/s "), image.getHeight(null)-strHeight);
+			
+			for (int i=0; i < (yStep) + 1; i++){
 				//calculate y-position
-				int yPos = bottomY - ((bottomY-topY)/(maxSpeed/10)) * i;
+				int yPos = bottomY - ((bottomY-topY)/(yStep)) * i;
+
+				g.setColor(lineCol);
+				//set Linestyle to dashed if line is between numbers of 10th
+				if ((i*divider % 10) != 0) {
+					float[] dash = {(float)5.0,(float)2.0};
+					g.setStroke(new BasicStroke(1, BasicStroke.CAP_ROUND, 
+						BasicStroke.JOIN_ROUND, 0, new float[]{0,0,0,6,0,0,0,6}, 0));
+				} else
+					g.setStroke(new BasicStroke());
+					
+				
 				//draw horizontal line			
 				g.drawLine(29, yPos, getWidth()-1, yPos);
+				
+				//set color and draw text for speed
+				g.drawString(nf.format(i*divider), 30-strWidth, yPos+strHeight/2);
 			}
+			//draw vertical Line
+			g.setColor(lineCol);
+			g.setStroke(new BasicStroke());
+			g.drawLine(30,topY,30,bottomY);
+
 			g.dispose();
 		}
 		catch (Exception e) {
@@ -584,6 +607,39 @@ public class UpDownChart extends JPanel implements MouseListener, MouseMotionLis
 		
 	}
 
+	private void readProperies() {
+		try {
+			upCol = parent.getPropertyColor("UploadColor",Color.red);
+			downCol = parent.getPropertyColor("DownloadColor", Color.blue);
+	
+			BGStart = parent.getPropertyColor("GradientStart", Color.white);
+			BGEnd = parent.getPropertyColor("GradientEnd", Color.darkGray);
+			
+			if (Boolean.valueOf(parent.getProperties().getProperty("UseGradient")).booleanValue() == false)
+				gradientDirection = BG_NO_GRADIENT;
+			else
+				gradientDirection = Integer.parseInt(parent.getProperties().getProperty("GradientDirection"));
+			
+			updatePeriod = Integer.parseInt(parent.getProperties().getProperty("UpdateTime","2000"));
+			try {
+				timerThread.schedule(chartTimer, 500, updatePeriod);
+			} catch (IllegalStateException e) {
+				System.err.println("Not owner - no wait();");
+			} catch (IllegalMonitorStateException e1) {
+				System.err.println("Not owner - no wait();");
+			} finally {
+				//timerThread.schedule(chartTimer, 500, updatePeriod);
+			}
+			
+			parent.getProperties().put("changed","false");
+			parent.saveProperties();
+		}
+		catch (Exception e) {
+			if (logger.isEnabledFor(Level.ERROR))
+				logger.error("Error reading Properties :" + e.getMessage() + "\r\n" + e.getCause());
+		}
+	}
+	
 	/**
 	 * 
 	 */
