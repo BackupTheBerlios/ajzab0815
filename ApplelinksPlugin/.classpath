@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path=""/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="C:/Programme/appleJuice/Java/ajcore.jar"/>
+	<classpathentry kind="lib" path="C:/Programme/appleJuice/Java/AJCoreGUI.jar"/>
+	<classpathentry kind="lib" path="C:/Programme/appleJuice/Java/needed_jars/skinlf.jar"/>
+	<classpathentry kind="output" path=""/>
+</classpath>
