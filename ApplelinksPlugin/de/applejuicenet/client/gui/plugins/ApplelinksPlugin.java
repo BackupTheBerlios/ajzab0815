@@ -1,5 +1,6 @@
 package de.applejuicenet.client.gui.plugins;
 
+import java.awt.BorderLayout;
 import java.awt.Color;
 
 import javax.swing.JFrame;
@@ -12,7 +13,7 @@ import org.apache.log4j.Logger;
 import de.utils.javabroser.JavaBrowser;
 
 /**
- * $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/ajzab0815/Repository/ApplelinksPlugin/de/applejuicenet/client/gui/plugins/ApplelinksPlugin.java,v 1.1 2004/01/22 22:45:16 zab0815 Exp $
+ * $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/ajzab0815/Repository/ApplelinksPlugin/de/applejuicenet/client/gui/plugins/ApplelinksPlugin.java,v 1.2 2004/01/23 06:25:58 zab0815 Exp $
  *
  * <p>Titel: AppleJuice Core-GUI</p>
  * <p>Beschreibung: Erstes GUI für den von muhviehstarr entwickelten appleJuice-Core</p>
@@ -21,6 +22,9 @@ import de.utils.javabroser.JavaBrowser;
  * @author: zab0815 <andy@zab0815.homelinux.org>
  *
  * $Log: ApplelinksPlugin.java,v $
+ * Revision 1.2  2004/01/23 06:25:58  zab0815
+ * fixed sizing
+ *
  * Revision 1.1  2004/01/22 22:45:16  zab0815
  * initial commit,
  * poor HTML rendering,
@@ -41,12 +45,12 @@ public class ApplelinksPlugin extends PluginConnector {
     	try{
     		logger = Logger.getLogger(getClass());
             initIcon();
-            //setLayout(new BorderLayout());
+            setLayout(new BorderLayout());
+            setSize(getWidth(), getHeight());
             
             html =new JavaBrowser();
             html.displayPage("http://www.applelinks.org");
-            html.setSize(getWidth(), getHeight());
-            add(html);
+            add(html,BorderLayout.CENTER);
             setBackground(Color.BLACK);
         }
         catch (Exception e){

@@ -2,16 +2,12 @@
 package de.utils.javabroser;
 import java.awt.BorderLayout;
 import java.awt.Cursor;
-import java.awt.Font;
-import java.awt.GridBagConstraints;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.net.URL;
 
-import javax.swing.Box;
-import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JEditorPane;
 import javax.swing.JLabel;
@@ -43,29 +39,14 @@ public class JavaBrowser extends JPanel implements HyperlinkListener, ActionList
 	private HTMLDocument m_doc;
 	private StyleSheet m_context;
 	private URL url;
+	private JScrollPane jsp;
+	private JPanel bp;
 	
 	public JavaBrowser ( ) {
-
-		/* Make the JEditoPane non-editable so that when user
-		 clicks on a link then another page is loaded. By default, 
-		 JEditorPane is editable and works as a HTML editor not as
-		 a browser. Make make it work as a browser we must make it
-		 non-editable */
-
-		browser.setEditable ( false ) ;
+		setLayout(new BorderLayout());
 		
-		browser.setEditorKit(m_kit);
-		
-
-		/* Add a hyperlink listener so that when user clicks on a 
-		 link then hyperlinkUpdate ( ) method is called and we
-		 will load another page */
-
-		browser.addHyperlinkListener ( this ) ;
-
-
 		//Put the address text filed and button on the north of frame
-		JPanel bp =new JPanel();
+		bp = new JPanel();
 		bp.setLayout ( new GridLayout(1,5)) ;
 		bp.setBorder(new CompoundBorder (
 				new BevelBorder(BevelBorder.LOWERED),
@@ -82,13 +63,25 @@ public class JavaBrowser extends JPanel implements HyperlinkListener, ActionList
 		addrText.addActionListener ( this ) ;
 		goButton.addActionListener ( this ) ;
 
-		setLayout(new BorderLayout(5,5));
 		add (bp, BorderLayout.NORTH);
 
-		// Add the panel to the north
-		browser.setSize(getWidth(),getHeight());
-		add ( new JScrollPane ( browser, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED), BorderLayout.SOUTH) ;
+		/* Make the JEditoPane non-editable so that when user
+		 clicks on a link then another page is loaded. By default, 
+		 JEditorPane is editable and works as a HTML editor not as
+		 a browser. Make make it work as a browser we must make it
+		 non-editable */
+		browser.setEditable ( false ) ;
 		
+		//browser.setEditorKit(m_kit);
+
+		/* Add a hyperlink listener so that when user clicks on a 
+		 link then hyperlinkUpdate ( ) method is called and we
+		 will load another page */
+		browser.addHyperlinkListener ( this ) ;
+		
+		// Add the panel to the north
+		jsp = new JScrollPane ( browser, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+		add ( jsp, BorderLayout.CENTER);
 	}
 
 
@@ -142,22 +135,7 @@ public class JavaBrowser extends JPanel implements HyperlinkListener, ActionList
 				// Maybe user specified a URL
 				try {
 					URL url = new URL ( page ) ;
-//					URL url = new URL ( "http://192.168.0.1/index.html" ) ;
-//					URLConnection conn = url.openConnection();
-//					Reader rd = new InputStreamReader(conn.getInputStream());
-//					
-//					// Parse the HTML
-//					m_kit =new HTMLEditorKit();
-//
-//					m_doc =(HTMLDocument)m_kit.createDefaultDocument();
-//					m_doc.putProperty("IgnoreCharsetDirective", new Boolean(false)); 
-//					m_kit.read(rd, m_doc, 0);
-//					m_context =m_doc.getStyleSheet();
-//					browser.setDocument(m_doc);
-//					rd.close();
 					browser.setPage ( url ) ;
-					browser.setFont(new Font("",0,20));
-					
 				}
 				catch ( Exception e ) {
 					//Not a valid URL 
@@ -188,6 +166,7 @@ public class JavaBrowser extends JPanel implements HyperlinkListener, ActionList
 		 EXITED is triggerd. */
 		// Das Ändern des Mauszeigers geht ab 
 		// Java 1.3 auch automatisch 
+		System.out.println(e.getDescription() + "URL:" + e.getURL());
 		if (e.getEventType() == 
 			HyperlinkEvent.EventType.ENTERED) {
 			((JEditorPane) e.getSource()).setCursor(
